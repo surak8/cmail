@@ -11,11 +11,16 @@
 using System;
 using System.Collections.Generic;
 using System.Configuration;
+using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Mail;
 using System.Reflection;
+using System.Security.Principal;
 
+/*
+ * smtp.comcast.net:587:1
+ * */
 namespace NScmail {
 
     // http://csharp.net-informations.com/communications/csharp-email-attachment.htm
@@ -24,29 +29,29 @@ namespace NScmail {
     public class cmailDriver {
         [STAThread()]
         public static void Main(string[] args) {
-            int nargs;
+            //           int nargs;
             List<string> argsToProcess;
-            string  smtpServer, srcEmail, destEmail, subject, body;
+            string smtpServerName, srcEmail, destEmail, subject, body;
             bool showHelp;
             MailMessage mail;
-            SmtpClient SmtpServer;
+            SmtpClient smtpSvr;
             Attachment attachment;
             bool abort = false;
+            int exitCode = 0,port=587;
 
-            smtpServer = ConfigurationManager.AppSettings["SMTP_SERVER"];
+            smtpServerName = ConfigurationManager.AppSettings["SMTP_SERVER"];
             srcEmail = ConfigurationManager.AppSettings["sourceEmail"];
             destEmail = ConfigurationManager.AppSettings["destEmail"];
-            subject = "default subject";
+            subject = "default subject"; 
             body = "default body";
-            argsToProcess = parseArguments(args, ref smtpServer, ref destEmail, out showHelp, ref subject, ref body);
-//            if ((nargs = args.Length) > 0) {
-  //          }
+            argsToProcess = parseArguments(args, ref smtpServerName, ref destEmail, out showHelp, ref subject, ref body,ref port);
             if (showHelp) {
                 Console.Out.WriteLine("user requested help.");
                 showUserHelp(Console.Out, Assembly.GetEntryAssembly());
+
             } else {
                 mail = new MailMessage();
-                SmtpServer = new SmtpClient(smtpServer);
+                smtpSvr = new SmtpClient(smtpServerName);
                 mail.From = new MailAddress(srcEmail);
                 mail.To.Add(destEmail);
                 mail.Subject = "Test Mail - 1";
@@ -55,23 +60,26 @@ namespace NScmail {
                 //                    attachment = new Attachment("your attachment file");
                 //                  mail.Attachments.Add(attachment);
 
-                SmtpServer.Port = 587;
-                SmtpServer.Credentials = new NetworkCredential("username", "password");
-                SmtpServer.EnableSsl = true;
-
-                SmtpServer.Send(mail);
+                smtpSvr.Port = port;
+                smtpSvr.UseDefaultCredentials = true;
+                smtpSvr.EnableSsl = true;
+                try {
+                    smtpSvr.Send(mail);
+                } catch (Exception ex) {
+                    Logger.log(MethodBase.GetCurrentMethod(), ex);
+                }
             }
-
+            Environment.Exit(exitCode);
         }
 
-        static List<string> parseArguments(string[] args, ref string smtpServer, ref string destEmail, out bool showHelp, ref string subject, ref string body) {
+        static List<string> parseArguments(string[] args, ref string smtpServer, ref string destEmail, out bool showHelp, ref string subject, ref string body , ref int port) {
             List<string> argsToProcess;
             int nargs = args.Length, len;
             string anArg;
 
             showHelp = false;
             argsToProcess = new List<string>();
-            for (int i = 0; i < nargs; i++) {
+            for (int i = 0 ; i < nargs ; i++) {
                 anArg = args[i];
                 if ((len = anArg.Length) >= 2) {
                     if (anArg[0] == '-' || anArg[0] == '/') {
@@ -87,6 +95,10 @@ namespace NScmail {
                             case 's':
                                 if (len > 2) subject = anArg.Substring(2).Trim();
                                 else { subject = args[i + 1]; i++; }
+                                break;
+                            case 'x':
+                                if (len > 2) smtpServer = anArg.Substring(2).Trim();
+                                else { smtpServer = args[i + 1]; i++; }
                                 break;
                             case 'h': showHelp = true; break;
                             case '?': showHelp = true; break;
@@ -110,4 +122,5 @@ namespace NScmail {
                 ": -b body-text -r recipient -s subject");
         }
     }
+
 }
