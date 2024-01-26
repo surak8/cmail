@@ -7,7 +7,7 @@ using System.Runtime.InteropServices;
 [assembly:AssemblyCompany("Colt Manufacturing Company LLC.")]
 [assembly:AssemblyCopyright("Copyright © 2017-2024, Colt's Manufacturing Company LLC.")]
 #if DEBUG
-[assembly:AssemblyConfiguration("Debug assemblyVersion")]
+[assembly:AssemblyConfiguration("Debug version")]
 #else
 [assembly:AssemblyConfiguration("Release assemblyVersion")]
 #endif
