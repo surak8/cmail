@@ -1,0 +1,8 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x86'">
+    <StartArguments>-s "Serial numbers marked on 26-JAN-24" -b "Attached is a list of serial numbers marked on 26-JAN-24." -a C:\Scripts\logs\EpicorSNMarked.csv -p NAT0#AR6720 
+	-r rcousens%40colt.com
+ -d</StartArguments>
+  </PropertyGroup>
+</Project>

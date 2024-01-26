@@ -13,114 +13,123 @@ using System.Collections.Generic;
 using System.Configuration;
 using System.Diagnostics;
 using System.IO;
-using System.Net;
 using System.Net.Mail;
 using System.Reflection;
-using System.Security.Principal;
 
 /*
  * smtp.comcast.net:587:1
  * */
 namespace NScmail {
 
-    // http://csharp.net-informations.com/communications/csharp-email-attachment.htm
-    // COLT-EX2010.colt.com
+	// http://csharp.net-informations.com/communications/csharp-email-attachment.htm
+	// COLT-EX2010.colt.com
 
-    public class cmailDriver {
-        [STAThread()]
-        public static void Main(string[] args) {
-            //           int nargs;
-            List<string> argsToProcess;
-            string smtpServerName, srcEmail, destEmail, subject, body;
-            bool showHelp;
-            MailMessage mail;
-            SmtpClient smtpSvr;
-            Attachment attachment;
-            bool abort = false;
-            int exitCode = 0,port=587;
+	public class cmailDriver {
+		[STAThread()]
+		public static void Main(string[] args) {
+			//           int nargs;
+			List<string> argsToProcess;
+			string smtpServerName, srcEmail, destEmail, subject, body;
+			bool showHelp;
+			MailMessage mail;
+			SmtpClient smtpSvr;
+			//Attachment attachment;
+			//bool abort = false, debug = false;
+			bool debug = false;
+			int exitCode = 0, port = 25;
+			MethodBase mb = MethodBase.GetCurrentMethod();
 
-            smtpServerName = ConfigurationManager.AppSettings["SMTP_SERVER"];
-            srcEmail = ConfigurationManager.AppSettings["sourceEmail"];
-            destEmail = ConfigurationManager.AppSettings["destEmail"];
-            subject = "default subject"; 
-            body = "default body";
-            argsToProcess = parseArguments(args, ref smtpServerName, ref destEmail, out showHelp, ref subject, ref body,ref port);
-            if (showHelp) {
-                Console.Out.WriteLine("user requested help.");
-                showUserHelp(Console.Out, Assembly.GetEntryAssembly());
+			//port = 587;  // previous value
 
-            } else {
-                mail = new MailMessage();
-                smtpSvr = new SmtpClient(smtpServerName);
-                mail.From = new MailAddress(srcEmail);
-                mail.To.Add(destEmail);
-                mail.Subject = "Test Mail - 1";
-                mail.Body = "mail with attachment";
+			smtpServerName = ConfigurationManager.AppSettings["SMTP_SERVER"];
+			srcEmail = ConfigurationManager.AppSettings["sourceEmail"];
+			destEmail = ConfigurationManager.AppSettings["destEmail"];
+			subject = "default subject";
+			body = "default body";
+			argsToProcess = parseArguments(args, ref smtpServerName, ref destEmail, out showHelp, ref subject, ref body, ref port, ref debug);
+			if (showHelp) {
+				Console.Out.WriteLine("user requested help.");
+				showUserHelp(Console.Out, Assembly.GetEntryAssembly());
 
-                //                    attachment = new Attachment("your attachment file");
-                //                  mail.Attachments.Add(attachment);
+			} else {
+				mail = new MailMessage();
+				if (debug)
+					Console.WriteLine(
+						"SMTP-server: " + smtpServerName + "\r\n" +
+						"       port: " + port+ "\r\n" +
+						"  src-email: " + srcEmail + "\r\n" +
+						" dest-email: " + destEmail);
+				smtpSvr = new SmtpClient(smtpServerName);
+				mail.From = new MailAddress(srcEmail);
+				mail.To.Add(destEmail);
+				mail.Subject = "Test Mail - 1";
+				mail.Body = "mail with attachment";
+				smtpSvr.Port = port;
+				//smtpSvr.UseDefaultCredentials = true;
+				smtpSvr.EnableSsl = true;
+				try {
+					smtpSvr.Send(mail);
+					Logger.log(mb, "email sent.");
+				} catch (Exception ex) {
+					Logger.log(mb, ex);
+				}
+			}
+			Environment.Exit(exitCode);
+		}
 
-                smtpSvr.Port = port;
-                smtpSvr.UseDefaultCredentials = true;
-                smtpSvr.EnableSsl = true;
-                try {
-                    smtpSvr.Send(mail);
-                } catch (Exception ex) {
-                    Logger.log(MethodBase.GetCurrentMethod(), ex);
-                }
-            }
-            Environment.Exit(exitCode);
-        }
+		static List<string> parseArguments(string[] args, ref string smtpServer, ref string destEmail, out bool showHelp, ref string subject, ref string body, ref int port, ref bool debug) {
+			List<string> argsToProcess;
+			int nargs = args.Length, len;
+			string anArg;
 
-        static List<string> parseArguments(string[] args, ref string smtpServer, ref string destEmail, out bool showHelp, ref string subject, ref string body , ref int port) {
-            List<string> argsToProcess;
-            int nargs = args.Length, len;
-            string anArg;
+			showHelp = false;
+			argsToProcess = new List<string>();
+			for (int i = 0; i < nargs; i++) {
+				anArg = args[i];
+				if ((len = anArg.Length) >= 2) {
+					if (anArg[0] == '-' || anArg[0] == '/') {
+						switch (anArg[1]) {
+							case 'b':
+								if (len > 2) body = anArg.Substring(2).Trim();
+								else { body = args[i + 1]; i++; }
+								break;
+							case 'd':
+								Trace.WriteLine("here");
+								debug = true;
+								i++;
+								break;
+							case 'r':
+								if (len > 2) destEmail = anArg.Substring(2).Trim();
+								else { destEmail = args[i + 1]; i++; }
+								break;
+							case 's':
+								if (len > 2) subject = anArg.Substring(2).Trim();
+								else { subject = args[i + 1]; i++; }
+								break;
+							case 'x':
+								if (len > 2) smtpServer = anArg.Substring(2).Trim();
+								else { smtpServer = args[i + 1]; i++; }
+								break;
+							case 'h': showHelp = true; break;
+							case '?': showHelp = true; break;
+						}
+					} else {
+						argsToProcess.Add(anArg);
+					}
+				}
+			}
+			return argsToProcess;
+		}
 
-            showHelp = false;
-            argsToProcess = new List<string>();
-            for (int i = 0 ; i < nargs ; i++) {
-                anArg = args[i];
-                if ((len = anArg.Length) >= 2) {
-                    if (anArg[0] == '-' || anArg[0] == '/') {
-                        switch (anArg[1]) {
-                            case 'b':
-                                if (len > 2) body = anArg.Substring(2).Trim();
-                                else { body = args[i + 1]; i++; }
-                                break;
-                            case 'r':
-                                if (len > 2) destEmail = anArg.Substring(2).Trim();
-                                else { destEmail = args[i + 1]; i++; }
-                                break;
-                            case 's':
-                                if (len > 2) subject = anArg.Substring(2).Trim();
-                                else { subject = args[i + 1]; i++; }
-                                break;
-                            case 'x':
-                                if (len > 2) smtpServer = anArg.Substring(2).Trim();
-                                else { smtpServer = args[i + 1]; i++; }
-                                break;
-                            case 'h': showHelp = true; break;
-                            case '?': showHelp = true; break;
-                        }
-                    } else {
-                        argsToProcess.Add(anArg);
-                    }
-                }
-            }
-            return argsToProcess;
-        }
+		static void showUserHelp(TextWriter tw, Assembly a) {
+			tw.WriteLine("usage:");
+			// -D devexpress
+			// -g generate-code
+			// -isDebug phibro-style
+			// -s simple
 
-        static void showUserHelp(TextWriter tw, Assembly a) {
-            tw.WriteLine("usage:");
-            // -D devexpress
-            // -g generate-code
-            // -isDebug phibro-style
-            // -s simple
-
-            tw.WriteLine("\t" + Path.GetFileNameWithoutExtension(a.Location) +
-                ": -b body-text -r recipient -s subject");
-        }
-    }
-
+			tw.WriteLine("\t" + Path.GetFileNameWithoutExtension(a.Location) +
+				": -b body-text -r recipient -s subject");
+		}
+	}
 }
